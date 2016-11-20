@@ -2,6 +2,7 @@ import subprocess, wmi, re, wmi, sys, datetime, time, os
 
 processName = ""
 processID = 0
+interval_minutes = 5
 
 def main():
 
@@ -10,6 +11,8 @@ def main():
     #continue until valid process is entered
     global processName
     result = 0
+
+    #first argument is process name
     if len(sys.argv) > 1:
         processName = sys.argv[1]
         result = getProcessID()
@@ -18,6 +21,16 @@ def main():
         
         result = getProcessID()
 
+    #second argument is custom interval (in minutes)
+    global interval_minutes
+
+    if len(sys.argv) > 2:   
+        interval = sys.argv[2]
+        if isinstance(interval, int):
+            if interval >= 1 and interval <= 60:
+                interval_minutes = interval
+            #else default interval_minutes will be used
+                
     monitorMemoryLoop()
 
 def setupSaveDir():
@@ -57,7 +70,7 @@ def getProcessID():
         print("Error - could not identify processID, please ensure specified process is running")
         return 0
     else:
-        print("Monitoring memory for process: " + processName)
+        print("Monitoring memory for process: " + processName + "; using interval of " + str(interval_minutes) + " minute(s)")
         return 1
         
 def monitorMemoryLoop():
@@ -67,14 +80,22 @@ def monitorMemoryLoop():
     savefile = open(str(filename),'w')
 
     running = True
+    currentMinute = None
+    
     while(running):
         memory = getMemory()
         now = datetime.datetime.now()
-        nowFormatted = now.strftime("%Y-%m-%d %H:%M:%S")
-
+        nowFormatted = now.strftime("%Y-%m-%d %H:%M")
+        
         if(memory != None):
-            if(now.second % 2 == 0):
-                savefile.write( nowFormatted + ": " + formatMemory(memory) + "\n" )
+            if (now.minute % interval_minutes == 0) and (now.minute != currentMinute):
+                currentMinute = now.minute
+                
+                line = nowFormatted + ": " + formatMemory(memory)
+            
+                print(line)
+                
+                savefile.write( line + "\n" )
                 savefile.flush()
 
             time.sleep(1)
